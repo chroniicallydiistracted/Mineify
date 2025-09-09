@@ -155,6 +155,7 @@
     let refreshToken = null;
     let tokenExpiresAt = 0;
     let currentTimeRange = 'medium_term';
+    let cachedProfile = null; // used for country
 
     // ===== PKCE helpers
     function generateRandomString(len){
@@ -216,41 +217,45 @@
       document.documentElement.style.setProperty('--tile-min', px + 'px');
       document.getElementById('tileWidthValue').textContent = px + 'px';
     }
+    function firstTextLine(s){ // trim long HTML error bodies
+      if (!s) return '';
+      const t = s.replace(/<[^>]*>/g,'').trim();
+      return t.split('\n').map(x=>x.trim()).filter(Boolean)[0]?.slice(0,160) || '';
+    }
 
-    // ===== Fetch wrapper (strong error surface)
+    // ===== Fetch wrapper (better error surfacing, handles non-JSON)
     async function fetchSpotify(endpoint){
       const ok = await ensureValidToken();
       if (!ok) return { error: { status: 401, message: 'No valid token' } };
 
       const url = `https://api.spotify.com/v1/${endpoint}`;
       const res = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${accessToken}`, 'Accept': 'application/json' }
       });
 
-      let body = null;
-      try { body = await res.json(); } catch { /* non-JSON */ }
+      let body = null, text = null;
+      try { body = await res.json(); } catch {
+        try { text = await res.text(); } catch {}
+      }
 
       if (!res.ok) {
-        const err = body?.error || { status: res.status, message: (body?.message || 'HTTP error') };
-        console.warn('Spotify API error', { endpoint, status: res.status, message: err.message });
-        return { error: err };
+        const msg = body?.error?.message || body?.message || firstTextLine(text) || 'HTTP error';
+        const status = body?.error?.status || res.status;
+        console.warn('Spotify API error', { endpoint, status, msg, url });
+        return { error: { status, message: msg } };
       }
       return { data: body };
     }
 
     // ===== Boot
     document.addEventListener('DOMContentLoaded', async () => {
-      // dynamic display
       const el = document.getElementById('currentRedirectUri');
       if (el) el.textContent = REDIRECT_URI;
+
       const range = document.getElementById('tileWidth');
       setTileWidth(range.value);
       range.addEventListener('input', e => setTileWidth(e.target.value));
 
-      // already authenticated?
       if (loadStoredToken()){
         showDashboard();
         attachHandlers();
@@ -258,7 +263,6 @@
         return;
       }
 
-      // handle callback
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
       const returnedState = params.get('state');
@@ -304,7 +308,6 @@
     });
 
     function attachHandlers(){
-      // Start PKCE flow
       document.getElementById('loginBtn')?.addEventListener('click', async () => {
         const verifier = generateRandomString(64);
         const challenge = await pkceChallengeFromVerifier(verifier);
@@ -325,12 +328,11 @@
         window.location.href = auth.toString();
       });
 
-      // Time range switching
-      document.querySelectorAll('.time-btn').forEach(btn => {
-        btn.addEventListener('click', e => {
-          document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.time-btn').forEach(btn=>{
+        btn.addEventListener('click',e=>{
+          document.querySelectorAll('.time-btn').forEach(b=>b.classList.remove('active'));
           e.target.classList.add('active');
-          currentTimeRange = e.target.dataset.range;
+          currentTimeRange=e.target.dataset.range;
           loadAllData();
         });
       });
@@ -338,7 +340,7 @@
 
     // ===== Data loaders
     async function loadAllData(){
-      loadUserProfile();
+      await loadUserProfile();       // populate cachedProfile.country
       loadTopTracks();
       loadTopArtists();
       loadTopGenres();
@@ -351,6 +353,7 @@
     async function loadUserProfile(){
       const r = await fetchSpotify('me');
       if (r.error){ renderError('topTracks', `API error (${r.error.status}): ${r.error.message||'me'}`); return; }
+      cachedProfile = r.data || null;
       const u = r.data;
       const html = `
         <img src="${u.images?.[0]?.url || 'https://via.placeholder.com/60'}" class="user-avatar" alt="Profile">
@@ -407,21 +410,43 @@
       document.getElementById('topGenres').innerHTML = html;
     }
 
+    // --------- Audio Features (with defensive fallbacks)
     async function loadAudioFeatures(){
       const tr = await fetchSpotify(`me/top/tracks?time_range=${currentTimeRange}&limit=50`);
       if (tr.error){ renderError('audioFeatures', `Tracks failed (${tr.error.status}): ${tr.error.message}`); return; }
-      const items = tr.data.items || [];
-      if (!items.length){ renderError('audioFeatures','No top tracks to analyze.'); return; }
 
-      const ids = items.map(t => t.id);
+      const ids = (tr.data.items||[])
+        .map(t => t?.id)
+        .filter(Boolean); // remove null/undefined just in case
+
+      if (!ids.length){ renderError('audioFeatures','No top tracks to analyze.'); return; }
+
       const chunks = []; for (let i=0;i<ids.length;i+=100) chunks.push(ids.slice(i,i+100));
 
-      const all = [];
+      let all = [];
       for (const chunk of chunks){
-        const r = await fetchSpotify(`audio-features?ids=${chunk.join(',')}`);
-        if (r.error){ renderError('audioFeatures', `Audio features failed (${r.error.status}): ${r.error.message}`); return; }
-        all.push(...(r.data.audio_features || []));
+        let r = await fetchSpotify(`audio-features?ids=${chunk.join(',')}`);
+        // If Spotify returns a 403/404 here (rare), try smaller slices to identify/skip any problematic IDs
+        if (r.error && (r.error.status === 403 || r.error.status === 404)) {
+          const sliceSize = 20;
+          for (let i=0;i<chunk.length;i+=sliceSize){
+            const sub = chunk.slice(i,i+sliceSize);
+            const subRes = await fetchSpotify(`audio-features?ids=${sub.join(',')}`);
+            if (subRes.error && (subRes.error.status === 403 || subRes.error.status === 404)) {
+              console.warn('Skipping sub-chunk due to 403/404', subRes.error, sub);
+              continue; // skip this sub-chunk entirely
+            }
+            if (subRes.error) { renderError('audioFeatures', `Audio features failed (${subRes.error.status}): ${subRes.error.message}`); return; }
+            all.push(...(subRes.data.audio_features||[]));
+          }
+        } else if (r.error) {
+          renderError('audioFeatures', `Audio features failed (${r.error.status}): ${r.error.message}`);
+          return;
+        } else {
+          all.push(...(r.data.audio_features||[]));
+        }
       }
+
       const valid = all.filter(Boolean);
       if (!valid.length){ renderError('audioFeatures','No analyzable audio features returned.'); return; }
 
@@ -481,7 +506,9 @@
       document.getElementById('listeningStats').innerHTML = html;
     }
 
+    // --------- Recommendations (market + genre fallbacks)
     async function loadRecommendations(){
+      // seeds
       const [tr, ar] = await Promise.all([
         fetchSpotify(`me/top/tracks?time_range=${currentTimeRange}&limit=5`),
         fetchSpotify(`me/top/artists?time_range=${currentTimeRange}&limit=5`)
@@ -492,17 +519,37 @@
         return;
       }
 
-      const tracks = tr.data.items || [];
-      const artists = ar.data.items || [];
-      if (!tracks.length || !artists.length){
+      const tracks = (tr.data.items || []).filter(t => t?.id);
+      const artists = (ar.data.items || []).filter(a => a?.id);
+      if (!tracks.length && !artists.length){
         renderError('recommendations', 'Not enough history to recommend.');
         return;
       }
 
+      // derive country from profile if present
+      const marketCountry = cachedProfile?.country || null;
       const seedTracks = tracks.slice(0,2).map(t => t.id).join(',');
       const seedArtists = artists.slice(0,2).map(a => a.id).join(',');
 
-      const rec = await fetchSpotify(`recommendations?seed_tracks=${seedTracks}&seed_artists=${seedArtists}&limit=12&market=from_token`);
+      // try 1: explicit user country (more deterministic than from_token)
+      let rec = await fetchSpotify(`recommendations?seed_tracks=${seedTracks}&seed_artists=${seedArtists}&limit=12${marketCountry ? `&market=${marketCountry}` : ''}`);
+      if (rec.error && (rec.error.status === 403 || rec.error.status === 404)) {
+        // try 2: from_token
+        rec = await fetchSpotify(`recommendations?seed_tracks=${seedTracks}&seed_artists=${seedArtists}&limit=12&market=from_token`);
+      }
+      if (rec.error && (rec.error.status === 403 || rec.error.status === 404)) {
+        // try 3: fall back to genres derived from top artists
+        const genres = [];
+        for (const a of artists) {
+          (a.genres||[]).forEach(g => { if (!genres.includes(g)) genres.push(g); });
+          if (genres.length >= 5) break;
+        }
+        const seedGenres = genres.slice(0,2).join(',');
+        if (seedGenres) {
+          rec = await fetchSpotify(`recommendations?seed_genres=${encodeURIComponent(seedGenres)}&limit=12${marketCountry ? `&market=${marketCountry}` : ''}`);
+        }
+      }
+
       if (rec.error){
         renderError('recommendations', `Recommendations failed (${rec.error.status}): ${rec.error.message}`);
         return;
