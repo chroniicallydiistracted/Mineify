@@ -5,16 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Spotify Analytics Dashboard</title>
   <style>
-    :root{--tile-min:440px}
+    :root{--tile-min:480px}
     *{margin:0;padding:0;box-sizing:border-box}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;color:#fff}
-    .container{max-width:1600px;margin:0 auto;padding:24px}
+    .container{max-width:1680px;margin:0 auto;padding:24px}
     header{text-align:center;padding:32px 0}
     h1{font-size:3em;margin-bottom:10px;text-shadow:2px 2px 4px rgba(0,0,0,.3)}
     .subtitle{font-size:1.1em;opacity:.9}
     .controls{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:14px;opacity:.9}
-    .controls input[type=range]{width:240px}
-    .auth-section{background:rgba(255,255,255,.1);backdrop-filter:blur(10px);border-radius:20px;padding:30px;margin:30px auto;max-width:520px;text-align:center}
+    .controls input[type=range]{width:260px}
+    .auth-section{background:rgba(255,255,255,.1);backdrop-filter:blur(10px);border-radius:20px;padding:30px;margin:30px auto;max-width:560px;text-align:center}
     .btn{background:#1DB954;color:#fff;border:0;padding:15px 40px;font-size:1.1em;border-radius:50px;cursor:pointer;transition:.3s;display:inline-flex;align-items:center;gap:10px;text-decoration:none;margin:10px}
     .btn:hover{background:#1ed760;transform:translateY(-2px);box-shadow:0 10px 20px rgba(0,0,0,.2)}
     .dashboard{display:none;animation:fadeIn .5s ease}
@@ -45,19 +45,19 @@
     .genre-cloud{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;padding:12px}
     .genre-tag{background:rgba(255,255,255,.2);padding:8px 16px;border-radius:20px;font-size:.9em;transition:.3s}
     .genre-tag:hover{background:rgba(255,255,255,.3);transform:scale(1.05)}
-    .audio-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;padding:8px}
+    .audio-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;padding:8px}
     .feature-item{text-align:center}
     .feature-bar{width:100%;height:8px;background:rgba(255,255,255,.2);border-radius:4px;overflow:hidden;margin:10px 0}
     .feature-fill{height:100%;background:#1DB954;border-radius:4px;transition:width .5s ease}
     .recommendations{background:rgba(255,255,255,.05);border-radius:20px;padding:20px;margin:8px 0}
-    .rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-top:10px}
+    .rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-top:10px}
     .rec-item{text-align:center;cursor:pointer;transition:.3s}
     .rec-item:hover{transform:scale(1.05)}
     .rec-image{width:100%;aspect-ratio:1;border-radius:10px;object-fit:cover;margin-bottom:8px}
     .rec-name{font-size:.9em;font-weight:600}
     .rec-artist{font-size:.8em;opacity:.8}
     .error-message{background:rgba(255,0,0,.18);border:2px solid rgba(255,0,0,.45);padding:12px;border-radius:10px;text-align:center}
-    @media (max-width:860px){h1{font-size:2em}.stats-grid{grid-template-columns:1fr}}
+    @media (max-width:900px){h1{font-size:2em}.stats-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -67,8 +67,8 @@
       <p class="subtitle">Your personal music insights & statistics</p>
       <div class="controls">
         <label for="tileWidth">Tile width</label>
-        <input id="tileWidth" type="range" min="320" max="640" value="440"/>
-        <span id="tileWidthValue">440px</span>
+        <input id="tileWidth" type="range" min="360" max="720" value="480"/>
+        <span id="tileWidthValue">480px</span>
       </div>
     </header>
 
@@ -77,14 +77,11 @@
       <p style="margin:16px 0;opacity:.9;">Authorize this app to access your Spotify data.</p>
       <button id="loginBtn" class="btn" type="button">Connect with Spotify</button>
       <div style="margin-top:24px;padding:18px;background:rgba(0,0,0,.2);border-radius:10px;">
-        <h3 style="margin-bottom:12px;">Setup</h3>
-        <ol style="text-align:left;line-height:1.8;">
-          <li>Open <a href="https://developer.spotify.com/dashboard" target="_blank" style="color:#1DB954;">Spotify Developer Dashboard</a></li>
-          <li>Create/select an app</li>
-          <li>Add <code id="currentRedirectUri">https://spotify.westfam.media/callback</code> to Redirect URIs</li>
-          <li>Paste your Client ID below</li>
-        </ol>
-        <input id="clientId" type="text" placeholder="Enter your Spotify Client ID" style="width:100%;padding:10px;margin-top:12px;border-radius:5px;border:none;background:rgba(255,255,255,.9);color:#333;">
+        <h3 style="margin-bottom:12px;">App details</h3>
+        <ul style="text-align:left;line-height:1.8;opacity:.95;">
+          <li>Redirect URI: <code id="currentRedirectUri">https://spotify.westfam.media/callback</code></li>
+          <li>Client ID: <code>389386c58e5e4fcab8200ce12e10fdfc</code> (baked into this page)</li>
+        </ul>
       </div>
     </div>
 
@@ -138,148 +135,301 @@
   </div>
 
   <script>
-    const SPOTIFY_AUTH_ENDPOINT='https://accounts.spotify.com/authorize';
-    const TOKEN_ENDPOINT='https://accounts.spotify.com/api/token';
-    const REDIRECT_URI=window.location.origin+'/callback';
-    const SCOPES=['user-top-read','user-read-recently-played','user-read-private','user-read-email','playlist-read-private','user-library-read','user-follow-read'].join(' ');
-    let accessToken=null,refreshToken=null,tokenExpiresAt=0,currentTimeRange='medium_term';
+    // ===== OAuth (PKCE) constants
+    const CLIENT_ID = '389386c58e5e4fcab8200ce12e10fdfc'; // baked in
+    const SPOTIFY_AUTH_ENDPOINT = 'https://accounts.spotify.com/authorize';
+    const TOKEN_ENDPOINT = 'https://accounts.spotify.com/api/token';
+    const REDIRECT_URI = window.location.origin + '/callback';
+    const SCOPES = [
+      'user-top-read',
+      'user-read-recently-played',
+      'user-read-private',
+      'user-read-email',
+      'playlist-read-private',
+      'user-library-read',
+      'user-follow-read'
+    ].join(' ');
 
-    function generateRandomString(len){const p='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';const v=crypto.getRandomValues(new Uint8Array(len));return [...v].map(x=>p[x%p.length]).join('')}
-    async function sha256(i){return await crypto.subtle.digest('SHA-256',new TextEncoder().encode(i))}
-    function base64url(i){return btoa(String.fromCharCode(...new Uint8Array(i))).replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_')}
-    async function pkceChallengeFromVerifier(v){return base64url(await sha256(v))}
+    // ===== Runtime auth state
+    let accessToken = null;
+    let refreshToken = null;
+    let tokenExpiresAt = 0;
+    let currentTimeRange = 'medium_term';
 
-    function loadStoredToken(){accessToken=localStorage.getItem('access_token')||null;refreshToken=localStorage.getItem('refresh_token')||null;tokenExpiresAt=parseInt(localStorage.getItem('expires_at')||'0',10);return accessToken&&Date.now()<tokenExpiresAt-5000}
-    function storeToken(r){accessToken=r.access_token;refreshToken=r.refresh_token||refreshToken;tokenExpiresAt=Date.now()+r.expires_in*1000;localStorage.setItem('access_token',accessToken);if(refreshToken)localStorage.setItem('refresh_token',refreshToken);localStorage.setItem('expires_at',String(tokenExpiresAt))}
-    async function ensureValidToken(clientId){if(accessToken&&Date.now()<tokenExpiresAt-5000)return true;if(!refreshToken)return false;const body=new URLSearchParams({grant_type:'refresh_token',refresh_token:refreshToken,client_id:clientId});const res=await fetch(TOKEN_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});if(!res.ok)return false;storeToken(await res.json());return true}
+    // ===== PKCE helpers
+    function generateRandomString(len){
+      const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+      const arr=crypto.getRandomValues(new Uint8Array(len));
+      return [...arr].map(x=>chars[x%chars.length]).join('');
+    }
+    async function sha256(plain){ return await crypto.subtle.digest('SHA-256', new TextEncoder().encode(plain)); }
+    function base64url(input){
+      return btoa(String.fromCharCode(...new Uint8Array(input)))
+        .replace(/=/g,'').replace(/\+/g,'-').replace(/\//g,'_');
+    }
+    async function pkceChallengeFromVerifier(v){ return base64url(await sha256(v)); }
 
-    function showDashboard(){document.getElementById('authSection').style.display='none';document.getElementById('dashboard').classList.add('active')}
-    function renderError(id,msg){const el=document.getElementById(id);if(el)el.innerHTML=`<div class="error-message">${msg}</div>`}
-
-    async function fetchSpotifyData(endpoint,clientId){
-      const ok=await ensureValidToken(clientId);if(!ok)return{error:{status:401,message:'No valid token'}};
-      const res=await fetch(`https://api.spotify.com/v1/${endpoint}`,{headers:{'Authorization':`Bearer ${accessToken}`}});
-      let body=null;try{body=await res.json()}catch{}
-      if(!res.ok)return{error:body?.error||{status:res.status,message:'HTTP error'}};
-      return{data:body};
+    // ===== Token storage/refresh
+    function loadStoredToken(){
+      accessToken = localStorage.getItem('access_token') || null;
+      refreshToken = localStorage.getItem('refresh_token') || null;
+      tokenExpiresAt = parseInt(localStorage.getItem('expires_at') || '0', 10);
+      return accessToken && Date.now() < tokenExpiresAt - 5000;
+    }
+    function storeToken(r){
+      accessToken = r.access_token;
+      refreshToken = r.refresh_token || refreshToken;
+      tokenExpiresAt = Date.now() + (r.expires_in * 1000);
+      localStorage.setItem('access_token', accessToken);
+      if (refreshToken) localStorage.setItem('refresh_token', refreshToken);
+      localStorage.setItem('expires_at', String(tokenExpiresAt));
+    }
+    async function ensureValidToken(){
+      if (accessToken && Date.now() < tokenExpiresAt - 5000) return true;
+      if (!refreshToken) return false;
+      const body = new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: CLIENT_ID
+      });
+      const res = await fetch(TOKEN_ENDPOINT, {
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body
+      });
+      if (!res.ok) return false;
+      const json = await res.json();
+      storeToken(json);
+      return true;
     }
 
-    document.addEventListener('DOMContentLoaded',async()=>{
-      const el=document.getElementById('currentRedirectUri');if(el)el.textContent=REDIRECT_URI;
-      const widthCtl=document.getElementById('tileWidth');const widthVal=document.getElementById('tileWidthValue');
-      const applyWidth=v=>{document.documentElement.style.setProperty('--tile-min',v+'px');widthVal.textContent=v+'px'};
-      applyWidth(widthCtl.value);widthCtl.addEventListener('input',e=>applyWidth(e.target.value));
+    // ===== UI helpers
+    function showDashboard(){
+      document.getElementById('authSection').style.display='none';
+      document.getElementById('dashboard').classList.add('active');
+    }
+    function renderError(elId, msg){
+      const el = document.getElementById(elId);
+      if (el) el.innerHTML = `<div class="error-message">${msg}</div>`;
+    }
+    function setTileWidth(px){
+      document.documentElement.style.setProperty('--tile-min', px + 'px');
+      document.getElementById('tileWidthValue').textContent = px + 'px';
+    }
 
-      const params=new URLSearchParams(window.location.search);
-      const urlError=params.get('error');if(urlError){renderError('topTracks',`Auth returned: ${urlError}`);history.replaceState({},'', '/')}
-      if(loadStoredToken()){showDashboard();attachHandlers();loadAllData();return}
+    // ===== Fetch wrapper (strong error surface)
+    async function fetchSpotify(endpoint){
+      const ok = await ensureValidToken();
+      if (!ok) return { error: { status: 401, message: 'No valid token' } };
 
-      const code=params.get('code');const returnedState=params.get('state');
-      if(code){
-        const clientId=localStorage.getItem('client_id_for_pkce');const codeVerifier=localStorage.getItem('code_verifier');const storedState=localStorage.getItem('pkce_state');
-        if(!clientId||!codeVerifier||!storedState||storedState!==returnedState){history.replaceState({},'','/')}
-        else{
-          const body=new URLSearchParams({client_id:clientId,grant_type:'authorization_code',code,redirect_uri:REDIRECT_URI,code_verifier:codeVerifier});
-          const resp=await fetch(TOKEN_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
-          const json=await resp.json();
-          if(resp.ok){storeToken(json);history.replaceState({},'','/');showDashboard();attachHandlers();loadAllData()}
-          else{renderError('topTracks',`Authorization failed (${json.error||resp.status})`);history.replaceState({},'','/')}
+      const url = `https://api.spotify.com/v1/${endpoint}`;
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      let body = null;
+      try { body = await res.json(); } catch { /* non-JSON */ }
+
+      if (!res.ok) {
+        const err = body?.error || { status: res.status, message: (body?.message || 'HTTP error') };
+        console.warn('Spotify API error', { endpoint, status: res.status, message: err.message });
+        return { error: err };
+      }
+      return { data: body };
+    }
+
+    // ===== Boot
+    document.addEventListener('DOMContentLoaded', async () => {
+      // dynamic display
+      const el = document.getElementById('currentRedirectUri');
+      if (el) el.textContent = REDIRECT_URI;
+      const range = document.getElementById('tileWidth');
+      setTileWidth(range.value);
+      range.addEventListener('input', e => setTileWidth(e.target.value));
+
+      // already authenticated?
+      if (loadStoredToken()){
+        showDashboard();
+        attachHandlers();
+        loadAllData();
+        return;
+      }
+
+      // handle callback
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const returnedState = params.get('state');
+      const urlError = params.get('error');
+
+      if (urlError){
+        renderError('topTracks', `Authorization error: ${urlError}`);
+        history.replaceState({}, '', '/');
+      }
+
+      if (code){
+        const codeVerifier = localStorage.getItem('code_verifier');
+        const storedState = localStorage.getItem('pkce_state');
+        if (!codeVerifier || !storedState || storedState !== returnedState){
+          renderError('topTracks', 'Authorization state mismatch.');
+          history.replaceState({}, '', '/');
+        } else {
+          const body = new URLSearchParams({
+            client_id: CLIENT_ID,
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: REDIRECT_URI,
+            code_verifier: codeVerifier
+          });
+          const resp = await fetch(TOKEN_ENDPOINT, {
+            method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body
+          });
+          const json = await resp.json();
+          if (resp.ok){
+            storeToken(json);
+            history.replaceState({}, '', '/');
+            showDashboard();
+            attachHandlers();
+            loadAllData();
+          } else {
+            renderError('topTracks', `Authorization failed (${json.error || resp.status})`);
+            history.replaceState({}, '', '/');
+          }
         }
       }
+
       attachHandlers();
     });
 
     function attachHandlers(){
-      document.getElementById('loginBtn')?.addEventListener('click',async()=>{
-        const clientId=document.getElementById('clientId').value.trim();if(!clientId){alert('Please enter your Spotify Client ID');return}
-        const verifier=generateRandomString(64);const challenge=await pkceChallengeFromVerifier(verifier);const state=generateRandomString(16);
-        localStorage.setItem('code_verifier',verifier);localStorage.setItem('client_id_for_pkce',clientId);localStorage.setItem('pkce_state',state);
-        const auth=new URL(SPOTIFY_AUTH_ENDPOINT);
-        auth.search=new URLSearchParams({response_type:'code',client_id:clientId,redirect_uri:REDIRECT_URI,scope:SCOPES,code_challenge_method:'S256',code_challenge:challenge,state}).toString();
-        window.location.href=auth.toString();
+      // Start PKCE flow
+      document.getElementById('loginBtn')?.addEventListener('click', async () => {
+        const verifier = generateRandomString(64);
+        const challenge = await pkceChallengeFromVerifier(verifier);
+        const state = generateRandomString(16);
+        localStorage.setItem('code_verifier', verifier);
+        localStorage.setItem('pkce_state', state);
+
+        const auth = new URL(SPOTIFY_AUTH_ENDPOINT);
+        auth.search = new URLSearchParams({
+          response_type: 'code',
+          client_id: CLIENT_ID,
+          redirect_uri: REDIRECT_URI,
+          scope: SCOPES,
+          code_challenge_method: 'S256',
+          code_challenge: challenge,
+          state
+        }).toString();
+        window.location.href = auth.toString();
       });
-      document.querySelectorAll('.time-btn').forEach(btn=>{
-        btn.addEventListener('click',e=>{
-          document.querySelectorAll('.time-btn').forEach(b=>b.classList.remove('active'));
-          e.target.classList.add('active');currentTimeRange=e.target.dataset.range;loadAllData();
+
+      // Time range switching
+      document.querySelectorAll('.time-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+          document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('active'));
+          e.target.classList.add('active');
+          currentTimeRange = e.target.dataset.range;
+          loadAllData();
         });
       });
     }
 
-    async function loadAllData(){loadUserProfile();loadTopTracks();loadTopArtists();loadTopGenres();loadAudioFeatures();loadRecentlyPlayed();loadListeningStats();loadRecommendations()}
+    // ===== Data loaders
+    async function loadAllData(){
+      loadUserProfile();
+      loadTopTracks();
+      loadTopArtists();
+      loadTopGenres();
+      loadAudioFeatures();
+      loadRecentlyPlayed();
+      loadListeningStats();
+      loadRecommendations();
+    }
 
     async function loadUserProfile(){
-      const clientId=localStorage.getItem('client_id_for_pkce');
-      const res=await fetchSpotifyData('me',clientId);
-      if(res.error){renderError('topTracks',`API error (${res.error.status})`);return}
-      const u=res.data;
-      const html=`
-        <img src="${u.images?.[0]?.url||'https://via.placeholder.com/60'}" class="user-avatar" alt="Profile">
+      const r = await fetchSpotify('me');
+      if (r.error){ renderError('topTracks', `API error (${r.error.status}): ${r.error.message||'me'}`); return; }
+      const u = r.data;
+      const html = `
+        <img src="${u.images?.[0]?.url || 'https://via.placeholder.com/60'}" class="user-avatar" alt="Profile">
         <div class="user-info">
           <h2>${u.display_name}</h2>
-          <p style="opacity:.8;">${u.followers.total} followers • ${u.product} account</p>
+          <p style="opacity:.8;">${u.followers.total} followers • ${u.product} account • ${u.country || '—'}</p>
         </div>`;
-      const el=document.getElementById('userProfile');el.innerHTML=html;el.style.display='flex';
+      const el = document.getElementById('userProfile'); el.innerHTML = html; el.style.display='flex';
     }
 
     async function loadTopTracks(){
-      const clientId=localStorage.getItem('client_id_for_pkce');
-      const res=await fetchSpotifyData(`me/top/tracks?time_range=${currentTimeRange}&limit=10`,clientId);
-      if(res.error){renderError('topTracks',`Failed to load (${res.error.status})`);return}
-      const html=`<ul class="top-items">${
-        res.data.items.slice(0,5).map((t,i)=>`
+      const r = await fetchSpotify(`me/top/tracks?time_range=${currentTimeRange}&limit=10`);
+      if (r.error){ renderError('topTracks', `Failed (${r.error.status}): ${r.error.message}`); return; }
+      const html = `<ul class="top-items">${
+        r.data.items.slice(0,5).map((t,i)=>`
           <li class="top-item">
             <span class="item-rank">${i+1}</span>
-            <img src="${t.album.images?.[0]?.url||''}" alt="${t.name}" class="item-image">
+            <img src="${t.album.images?.[0]?.url || ''}" alt="${t.name}" class="item-image">
             <div class="item-info">
               <div class="item-name">${t.name}</div>
               <div class="item-artist">${t.artists.map(a=>a.name).join(', ')}</div>
             </div>
           </li>`).join('')
       }</ul>`;
-      document.getElementById('topTracks').innerHTML=html;
+      document.getElementById('topTracks').innerHTML = html;
     }
 
     async function loadTopArtists(){
-      const clientId=localStorage.getItem('client_id_for_pkce');
-      const res=await fetchSpotifyData(`me/top/artists?time_range=${currentTimeRange}&limit=10`,clientId);
-      if(res.error){renderError('topArtists',`Failed to load (${res.error.status})`);return}
-      const html=`<ul class="top-items">${
-        res.data.items.slice(0,5).map((a,i)=>`
+      const r = await fetchSpotify(`me/top/artists?time_range=${currentTimeRange}&limit=10`);
+      if (r.error){ renderError('topArtists', `Failed (${r.error.status}): ${r.error.message}`); return; }
+      const html = `<ul class="top-items">${
+        r.data.items.slice(0,5).map((a,i)=>`
           <li class="top-item">
             <span class="item-rank">${i+1}</span>
-            <img src="${a.images?.[0]?.url||''}" alt="${a.name}" class="item-image">
+            <img src="${a.images?.[0]?.url || ''}" alt="${a.name}" class="item-image">
             <div class="item-info">
               <div class="item-name">${a.name}</div>
               <div class="item-artist">${a.followers.total.toLocaleString()} followers</div>
             </div>
           </li>`).join('')
       }</ul>`;
-      document.getElementById('topArtists').innerHTML=html;
+      document.getElementById('topArtists').innerHTML = html;
     }
 
     async function loadTopGenres(){
-      const clientId=localStorage.getItem('client_id_for_pkce');
-      const res=await fetchSpotifyData(`me/top/artists?time_range=${currentTimeRange}&limit=50`,clientId);
-      if(res.error){renderError('topGenres',`Failed to load (${res.error.status})`);return}
-      const counts={};res.data.items.forEach(a=>a.genres.forEach(g=>counts[g]=(counts[g]||0)+1));
-      const top=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
-      const html=`<div class="genre-cloud">${
-        top.map(([g,c])=>`<span class="genre-tag" style="font-size:${0.8+(c/top[0][1])*0.6}em">${g}</span>`).join('')
+      const r = await fetchSpotify(`me/top/artists?time_range=${currentTimeRange}&limit=50`);
+      if (r.error){ renderError('topGenres', `Failed (${r.error.status}): ${r.error.message}`); return; }
+      const counts = {};
+      r.data.items.forEach(a => a.genres.forEach(g => counts[g] = (counts[g]||0) + 1));
+      const top = Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,10);
+      const html = `<div class="genre-cloud">${
+        top.map(([g,c]) => `<span class="genre-tag" style="font-size:${0.8+(c/top[0][1])*0.6}em">${g}</span>`).join('')
       }</div>`;
-      document.getElementById('topGenres').innerHTML=html;
+      document.getElementById('topGenres').innerHTML = html;
     }
 
     async function loadAudioFeatures(){
-      const clientId=localStorage.getItem('client_id_for_pkce');
-      const tr=await fetchSpotifyData(`me/top/tracks?time_range=${currentTimeRange}&limit=50`,clientId);
-      if(tr.error){renderError('audioFeatures',`Failed to load tracks (${tr.error.status})`);return}
-      const items=tr.data.items||[];if(!items.length){renderError('audioFeatures','No top tracks to analyze.');return}
-      const ids=items.map(t=>t.id);const chunks=[];for(let i=0;i<ids.length;i+=100)chunks.push(ids.slice(i,i+100));
-      const all=[];for(const chunk of chunks){const r=await fetchSpotifyData(`audio-features?ids=${chunk.join(',')}`,clientId);if(r.error){renderError('audioFeatures',`Audio features failed (${r.error.status})`);return}all.push(...(r.data.audio_features||[]))}
-      const valid=all.filter(Boolean);if(!valid.length){renderError('audioFeatures','No analyzable audio features returned.');return}
-      const avg={danceability:0,energy:0,valence:0,acousticness:0,instrumentalness:0,speechiness:0};valid.forEach(f=>{for(const k in avg)avg[k]+=f[k]||0});for(const k in avg)avg[k]=avg[k]/valid.length*100;
-      const html=`<div class="audio-features">${
+      const tr = await fetchSpotify(`me/top/tracks?time_range=${currentTimeRange}&limit=50`);
+      if (tr.error){ renderError('audioFeatures', `Tracks failed (${tr.error.status}): ${tr.error.message}`); return; }
+      const items = tr.data.items || [];
+      if (!items.length){ renderError('audioFeatures','No top tracks to analyze.'); return; }
+
+      const ids = items.map(t => t.id);
+      const chunks = []; for (let i=0;i<ids.length;i+=100) chunks.push(ids.slice(i,i+100));
+
+      const all = [];
+      for (const chunk of chunks){
+        const r = await fetchSpotify(`audio-features?ids=${chunk.join(',')}`);
+        if (r.error){ renderError('audioFeatures', `Audio features failed (${r.error.status}): ${r.error.message}`); return; }
+        all.push(...(r.data.audio_features || []));
+      }
+      const valid = all.filter(Boolean);
+      if (!valid.length){ renderError('audioFeatures','No analyzable audio features returned.'); return; }
+
+      const avg={danceability:0,energy:0,valence:0,acousticness:0,instrumentalness:0,speechiness:0};
+      valid.forEach(f => { for (const k in avg) avg[k] += f[k] || 0; });
+      for (const k in avg) avg[k] = (avg[k] / valid.length) * 100;
+
+      const html = `<div class="audio-features">${
         Object.entries(avg).map(([k,v])=>`
           <div class="feature-item">
             <div class="stat-label">${k[0].toUpperCase()+k.slice(1)}</div>
@@ -287,71 +437,86 @@
             <div style="font-size:.9em;opacity:.8;">${Math.round(v)}%</div>
           </div>`).join('')
       }</div>`;
-      document.getElementById('audioFeatures').innerHTML=html;
+      document.getElementById('audioFeatures').innerHTML = html;
     }
 
     async function loadRecentlyPlayed(){
-      const clientId=localStorage.getItem('client_id_for_pkce');
-      const res=await fetchSpotifyData('me/player/recently-played?limit=10',clientId);
-      if(res.error){renderError('recentlyPlayed',`Failed to load (${res.error.status})`);return}
-      const html=`<ul class="top-items">${
-        res.data.items.slice(0,5).map(item=>`
+      const r = await fetchSpotify('me/player/recently-played?limit=10');
+      if (r.error){ renderError('recentlyPlayed', `Failed (${r.error.status}): ${r.error.message}`); return; }
+      const html = `<ul class="top-items">${
+        r.data.items.slice(0,5).map(item=>`
           <li class="top-item">
-            <img src="${item.track.album.images?.[0]?.url||''}" alt="${item.track.name}" class="item-image">
+            <img src="${item.track.album.images?.[0]?.url || ''}" alt="${item.track.name}" class="item-image">
             <div class="item-info">
               <div class="item-name">${item.track.name}</div>
               <div class="item-artist">${item.track.artists.map(a=>a.name).join(', ')}</div>
             </div>
           </li>`).join('')
       }</ul>`;
-      document.getElementById('recentlyPlayed').innerHTML=html;
+      document.getElementById('recentlyPlayed').innerHTML = html;
     }
 
     async function loadListeningStats(){
-      const clientId=localStorage.getItem('client_id_for_pkce');
-      const [tracks,artists]=await Promise.all([
-        fetchSpotifyData(`me/top/tracks?time_range=${currentTimeRange}&limit=50`,clientId),
-        fetchSpotifyData(`me/top/artists?time_range=${currentTimeRange}&limit=50`,clientId)
+      const [t,a] = await Promise.all([
+        fetchSpotify(`me/top/tracks?time_range=${currentTimeRange}&limit=50`),
+        fetchSpotify(`me/top/artists?time_range=${currentTimeRange}&limit=50`)
       ]);
-      if(tracks.error||artists.error){renderError('listeningStats','Failed to load listening stats.');return}
-      let mins=0;if(tracks.data.items)tracks.data.items.forEach(t=>{mins+=t.duration_ms/60000});
-      const label={short_term:'Last 4 Weeks',medium_term:'Last 6 Months',long_term:'All Time'}[currentTimeRange];
-      const html=`
+      if (t.error || a.error){ renderError('listeningStats', 'Failed to load listening stats.'); return; }
+      let mins = 0; (t.data.items||[]).forEach(x => { mins += x.duration_ms/60000; });
+      const label = {short_term:'Last 4 Weeks',medium_term:'Last 6 Months',long_term:'All Time'}[currentTimeRange];
+      const html = `
         <div style="text-align:center;">
           <div class="stat-value">${Math.round(mins)}</div>
           <div class="stat-label">Estimated Minutes Listened</div>
           <div style="margin-top:16px;">
-            <div class="stat-value" style="font-size:1.8em;">${tracks.data.items?.length||0}</div>
+            <div class="stat-value" style="font-size:1.8em;">${t.data.items?.length || 0}</div>
             <div class="stat-label">Unique Top Tracks</div>
           </div>
           <div style="margin-top:16px;">
-            <div class="stat-value" style="font-size:1.8em;">${artists.data.items?.length||0}</div>
+            <div class="stat-value" style="font-size:1.8em;">${a.data.items?.length || 0}</div>
             <div class="stat-label">Unique Top Artists</div>
           </div>
           <p style="margin-top:16px;opacity:.7;font-size:.9em;">${label}</p>
         </div>`;
-      document.getElementById('listeningStats').innerHTML=html;
+      document.getElementById('listeningStats').innerHTML = html;
     }
 
     async function loadRecommendations(){
-      const clientId=localStorage.getItem('client_id_for_pkce');
-      const [tr,ar]=await Promise.all([
-        fetchSpotifyData(`me/top/tracks?time_range=${currentTimeRange}&limit=5`,clientId),
-        fetchSpotifyData(`me/top/artists?time_range=${currentTimeRange}&limit=5`,clientId)
+      const [tr, ar] = await Promise.all([
+        fetchSpotify(`me/top/tracks?time_range=${currentTimeRange}&limit=5`),
+        fetchSpotify(`me/top/artists?time_range=${currentTimeRange}&limit=5`)
       ]);
-      if(tr.error||ar.error){renderError('recommendations','Seeds unavailable.');return}
-      const t=tr.data.items||[],a=ar.data.items||[];
-      if(!t.length||!a.length){renderError('recommendations','Not enough history to recommend.');return}
-      const seedTracks=t.slice(0,2).map(x=>x.id).join(','),seedArtists=a.slice(0,2).map(x=>x.id).join(',');
-      const rec=await fetchSpotifyData(`recommendations?seed_tracks=${seedTracks}&seed_artists=${seedArtists}&limit=12&market=from_token`,clientId);
-      if(rec.error){renderError('recommendations',`Recommendations failed (${rec.error.status})`);return}
-      const html=rec.data.tracks.map(track=>`
+      if (tr.error || ar.error){
+        const e = tr.error || ar.error;
+        renderError('recommendations', `Seeds unavailable (${e.status}): ${e.message}`);
+        return;
+      }
+
+      const tracks = tr.data.items || [];
+      const artists = ar.data.items || [];
+      if (!tracks.length || !artists.length){
+        renderError('recommendations', 'Not enough history to recommend.');
+        return;
+      }
+
+      const seedTracks = tracks.slice(0,2).map(t => t.id).join(',');
+      const seedArtists = artists.slice(0,2).map(a => a.id).join(',');
+
+      const rec = await fetchSpotify(`recommendations?seed_tracks=${seedTracks}&seed_artists=${seedArtists}&limit=12&market=from_token`);
+      if (rec.error){
+        renderError('recommendations', `Recommendations failed (${rec.error.status}): ${rec.error.message}`);
+        return;
+      }
+
+      const html = rec.data.tracks.map(track => `
         <div class="rec-item" onclick="window.open('${track.external_urls.spotify}','_blank')">
-          <img src="${track.album.images?.[0]?.url||''}" alt="${track.name}" class="rec-image">
+          <img src="${track.album.images?.[0]?.url || ''}" alt="${track.name}" class="rec-image">
           <div class="rec-name">${track.name}</div>
-          <div class="rec-artist">${track.artists?.[0]?.name||''}</div>
+          <div class="rec-artist">${track.artists?.[0]?.name || ''}</div>
         </div>`).join('');
-      const el=document.getElementById('recommendations');el.innerHTML=html;el.classList.remove('loading');
+      const el = document.getElementById('recommendations');
+      el.innerHTML = html;
+      el.classList.remove('loading');
     }
   </script>
 </body>
